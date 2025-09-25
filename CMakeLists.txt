@@ -93,3 +93,21 @@ include(BundleUtilities)
 fixup_bundle(\"${APP}\"   \"\"   \"${DIRS}\")
    " COMPONENT Runtime)
 INSTALL(FILES README.md DESTINATION ${APP})
+
+#
+# Create launchctl plist template
+#
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/macVNC.plist.in
+    ${CMAKE_CURRENT_BINARY_DIR}/macVNC.plist
+    @ONLY
+)
+
+#
+# Create installation script
+#
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/install.sh.in
+    ${CMAKE_CURRENT_BINARY_DIR}/install.sh
+    @ONLY
+)

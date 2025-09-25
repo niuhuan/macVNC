@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# macVNC Installation Script
+# This script installs macVNC as a launchctl service
+
+set -e
+
+APP_NAME="macVNC"
+BUNDLE_ID="net.christianbeier.macvnc"
+INSTALL_DIR="/Applications"
+PLIST_FILE="/Library/LaunchDaemons/${BUNDLE_ID}.plist"
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Installing macVNC..."
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root (use sudo)" 
+   exit 1
+fi
+
+# Copy app to Applications directory
+echo "Copying app to ${INSTALL_DIR}..."
+cp -R "${SCRIPT_DIR}/${APP_NAME}.app" "${INSTALL_DIR}/"
+
+# Set proper permissions
+echo "Setting permissions..."
+chown -R root:wheel "${INSTALL_DIR}/${APP_NAME}.app"
+chmod -R 755 "${INSTALL_DIR}/${APP_NAME}.app"
+
+# Install launchctl plist
+echo "Installing launchctl service..."
+cp "${SCRIPT_DIR}/macVNC.plist" "${PLIST_FILE}"
+chown root:wheel "${PLIST_FILE}"
+chmod 644 "${PLIST_FILE}"
+
+# Load the service
+echo "Loading service..."
+launchctl load "${PLIST_FILE}"
+
+echo "macVNC installed successfully!"
+echo "Service will start automatically on boot."
+echo "Logs are available at /tmp/macvnc.out and /tmp/macvnc.err"
+echo ""
+echo "IMPORTANT: Before using macVNC, you need to grant permissions:"
+echo "1. Go to System Preferences → Security & Privacy → Privacy"
+echo "2. Grant 'Screen Recording' permission to macVNC"
+echo "3. Grant 'Accessibility' permission to macVNC (for input control)"
+echo ""
+echo "To test the installation:"
+echo "  sudo launchctl list | grep macvnc"
+echo ""
+echo "To uninstall, run: sudo launchctl unload ${PLIST_FILE} && sudo rm -rf ${INSTALL_DIR}/${APP_NAME}.app ${PLIST_FILE}"
