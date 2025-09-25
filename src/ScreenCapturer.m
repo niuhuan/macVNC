@@ -4,6 +4,7 @@
 
 @property (nonatomic, assign) CGDirectDisplayID displayID;
 @property (nonatomic, strong) SCStream *stream;
+@property (nonatomic, assign) BOOL isCapturing;
 
 // handlers
 @property (nonatomic, copy, nonnull) void (^frameHandler)(CMSampleBufferRef sampleBuffer);
@@ -21,6 +22,7 @@
         _displayID = displayID;
         _frameHandler = [frameHandler copy];
         _errorHandler = [errorHandler copy];
+        _isCapturing = NO;
     }
     return self;
 }
@@ -68,18 +70,32 @@
         [self.stream startCaptureWithCompletionHandler:^(NSError * _Nullable startError) {
             if (startError) {
                 self.errorHandler(startError);
+            } else {
+                self.isCapturing = YES;
+                printf("Screen capture started\n");
             }
         }];
     }];
 }
 
 - (void)stopCapture {
+    if (!self.isCapturing) {
+        return;
+    }
+    
     [self.stream stopCaptureWithCompletionHandler:^(NSError * _Nullable stopError) {
         if (stopError) {
             self.errorHandler(stopError);
+        } else {
+            self.isCapturing = NO;
+            printf("Screen capture stopped\n");
         }
         self.stream = nil;
     }];
+}
+
+- (BOOL)isCapturing {
+    return _isCapturing;
 }
 
 

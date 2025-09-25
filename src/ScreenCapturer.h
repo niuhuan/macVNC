@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)startCapture;
 - (void)stopCapture;
+- (BOOL)isCapturing;
 
 @end
 

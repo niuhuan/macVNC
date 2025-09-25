@@ -44,6 +44,10 @@ rfbScreenInfoPtr rfbScreen;
 /* Operation modes set by CLI options */
 rfbBool viewOnly = FALSE;
 
+/* Client tracking */
+static int clientCount = 0;
+static ScreenCapturer *globalCapturer = nil;
+
 /* Two framebuffers. */
 void *frameBufferOne;
 void *frameBufferTwo;
@@ -562,7 +566,7 @@ ScreenInit(int argc, char**argv)
   rfbScreen->ptrAddEvent = PtrAddEvent;
   rfbScreen->kbdAddEvent = KbdAddEvent;
 
-  ScreenCapturer *capturer = [[ScreenCapturer alloc] initWithDisplay: displayID
+  globalCapturer = [[ScreenCapturer alloc] initWithDisplay: displayID
                                                         frameHandler:^(CMSampleBufferRef sampleBuffer) {
           rfbClientIteratorPtr iterator;
           rfbClientPtr cl;
@@ -620,7 +624,8 @@ ScreenInit(int argc, char**argv)
           //TODO handle other errors
           exit(EXIT_FAILURE);
       }];
-  [capturer startCapture];
+  
+  printf("Screen capturer initialized. Waiting for client connections to start capture...\n");
 
   rfbInitServer(rfbScreen);
 
@@ -630,13 +635,35 @@ ScreenInit(int argc, char**argv)
 
 void clientGone(rfbClientPtr cl)
 {
-    //TODO
+    clientCount--;
+    printf("Client disconnected. Total clients: %d\n", clientCount);
+    
+    if (clientCount == 0 && globalCapturer != nil) {
+        printf("No clients connected, stopping screen capture\n");
+        [globalCapturer stopCapture];
+    }
 }
 
 enum rfbNewClientAction newClient(rfbClientPtr cl)
 {
   cl->clientGoneHook = clientGone;
+  
+  // Check Accessibility permission if not in view-only mode
+  if (!viewOnly && !AXIsProcessTrusted()) {
+      fprintf(stderr, "Client connection rejected: Accessibility permission required for input control.\n");
+      fprintf(stderr, "Please grant permission in 'System Preferences'->'Security & Privacy'->'Privacy'->'Accessibility'.\n");
+      return RFB_CLIENT_REFUSE;
+  }
+  
   cl->viewOnly = viewOnly;
+  
+  clientCount++;
+  printf("Client connected. Total clients: %d\n", clientCount);
+  
+  if (clientCount == 1 && globalCapturer != nil) {
+      printf("First client connected, starting screen capture\n");
+      [globalCapturer startCapture];
+  }
 
   return(RFB_CLIENT_ACCEPT);
 }
@@ -657,10 +684,7 @@ int main(int argc,char *argv[])
         exit(EXIT_SUCCESS);
     }
 
-  if(!viewOnly && !AXIsProcessTrusted()) {
-      fprintf(stderr, "You have configured the server to post input events, but it does not have the necessary system permission. Please check if the program has been given permission to control your computer in 'System Preferences'->'Security & Privacy'->'Privacy'->'Accessibility'.\n");
-      exit(1);
-  }
+  // Accessibility permission will be checked when first client connects
 
   dimmingInit();
 

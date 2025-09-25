@@ -42,6 +42,16 @@ set(MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION})
 set(MACOSX_BUNDLE_ICON_FILE icon.icns)
 set_source_files_properties(src/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 
+# Set bundle identifier for launchctl
+set(MACOSX_BUNDLE_BUNDLE_NAME "macVNC")
+set(MACOSX_BUNDLE_BUNDLE_IDENTIFIER "net.christianbeier.macvnc")
+
+# Code signing configuration
+set(CMAKE_OSX_ARCHITECTURES "arm64")
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "")
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED "NO")
+set(CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED "NO")
+
 add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} LibVNCServer::vncserver ${CMAKE_THREAD_LIBS_INIT} ${CARBON_LIBRARY} ${IOKIT_LIBRARY}
@@ -49,6 +59,28 @@ target_link_libraries(${PROJECT_NAME} LibVNCServer::vncserver ${CMAKE_THREAD_LIB
   ${CORE_MEDIA}
   ${CORE_VIDEO}
   ${FOUNDATION})
+
+#
+# Create self-contained bundle
+#
+set(APP ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.app)
+set(APP_EXECUTABLE ${APP}/Contents/MacOS/${PROJECT_NAME})
+
+# Get the path to libvncserver.dylib
+get_target_property(LIBVNCSERVER_LIB LibVNCServer::vncserver IMPORTED_LOCATION)
+if(NOT LIBVNCSERVER_LIB)
+    get_target_property(LIBVNCSERVER_LIB LibVNCServer::vncserver IMPORTED_LOCATION_RELEASE)
+endif()
+if(NOT LIBVNCSERVER_LIB)
+    # Fallback: try to find the library manually
+    find_library(LIBVNCSERVER_LIB NAMES libvncserver.0.9.15.dylib libvncserver.dylib PATHS /usr/local/lib /opt/homebrew/lib)
+endif()
+
+# Create Frameworks directory in the bundle
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${APP}/Contents/Frameworks
+    COMMENT "Creating Frameworks directory"
+)
 
 #
 # Install, i.e. finalise bundle

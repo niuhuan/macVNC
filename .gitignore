@@ -3,3 +3,9 @@
 *~
 /.cache
 /.DS_Store
+
+*.iml
+.idea/
+cmake-build-*/
+.vscode/
+
